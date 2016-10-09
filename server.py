@@ -58,8 +58,7 @@ class Server():
     # sending message to all without the sender
 
     def msgAll(self, data, sender_connection):
-        message = self.auth_users[self.connStrRepr(
-            sender_connection)] + '> ' + data['message']
+        message = self.auth_users[self.connStrRepr(sender_connection)] + '> ' + data['message']
         print(message)  # SOME DEBUG STUFF
         global list_connections
         for connection in list_connections:
@@ -101,8 +100,7 @@ class Server():
             return False
         if not headers['Date']:
             return False
-        if not headers[
-                'Data-type']and not isinstance(headers['Data-type'], str):
+        if not headers['Data-type'] and not isinstance(headers['Data-type'], str):
             return False
         return True
     # just decode and load from json
@@ -175,6 +173,7 @@ class Server():
                     0)  # SOME DEBUG STUFF
                 connection.sendall(b'BAD')  # SOME DEBUG STUFF
                 break  # SOME DEBUG STUFF
+
         # after errors or something else
         if msg == 'Successful login':
             # connection.getpeername[0] = ip addr
