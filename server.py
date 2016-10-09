@@ -10,10 +10,6 @@ from base64 import b64decode
 from time import sleep
 from collections import defaultdict
 from _thread import start_new_thread
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sock.bind(('192.168.1.102', 8000))
-sock.listen(50)
-quit = True
 # Shared between connection threads
 list_connections = []  #
 
