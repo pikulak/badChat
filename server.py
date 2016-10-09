@@ -1,20 +1,20 @@
 ﻿#!c:/python34/python.exe
-#
-#This module does server stuff.
-#Author: Kacper Pikulski @ pikulak1@gmail.com
-#
-#
+"""
+This module does server stuff.
+Author: Kacper Pikulski @ pikulak1@gmail.com
+"""
 import socket
 import json
 from base64 import b64decode
 from time import sleep
-from collections import defaultdict
 from _thread import start_new_thread
 # Shared between connection threads
 list_connections = []  #
 
-#Value = ipaddr. Deleting two keys from two-way dict.
-def delUser(dict, value):  
+
+def delUser(dict, value):
+    """Value = ipaddr. Deleting two keys from two-way dict.
+    """
     name = dict[value]
     try:
         del dict[value]
@@ -23,22 +23,32 @@ def delUser(dict, value):
     except KeyError:
         return False
 
-
+        
 class Server():
-
-    def __init__(self, srvAddr):
+    """Header={
+            'Length' : int
+            'Flag' : int
+            'Date' : str
+            'Data-type' : str}
+    """
+    def __init__(self, server_address):
         #Two-way dict.
         self.auth_users = {}
         #Tuple.
-        self.srvAddr = srvAddr
+        self.server_address = server_address
 
-    def createSocket(self):
+    def create_socket(self):
+        """Creating socket.
+        """
+        
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.bind(self.srvAddr)
+        self.sock.bind(self.server_address)
         self.sock.listen(50)
     
-    #Auth function. Takes data and socket object.
     def auth(self, data, connection):
+        """Auth function. Takes data and socket object.
+        """
+        
         global list_connections
         #Checking if username already in using
         if data['name'] in self.auth_users:
@@ -52,39 +62,47 @@ class Server():
         else:
             #Successful login.
             self.auth_users[data['name']] = connection
-            self.auth_users[self.connStrRepr(connection)] = data['name']
+            self.auth_users[self.conn_str_repr(connection)] = data['name']
             list_connections.append(connection)
             print("Loged in:", data['name'])  # SOME DEBUG STUFF
             return 'OK!', 'Successful login'
     
-    #Just for two-way dict object's key representation
-    def connStrRepr(self, connection):
+    def conn_str_repr(self, connection):
+        """Two-way dict object's key representation.
+        """
+        
         return connection.getpeername()[0] + \
             ":" + str(connection.getpeername()[1])
             
-    #Sending message to all connected peers without the sender.
-    #TODO send message as json {'message':blabla, 'from':sender}.
-    def msgAll(self, data, sender_connection):
+    def send_to_all(self, data, sender_connection):
+        """Sending message to all connected peers without the sender.
+           TODO send message as json {'message':blabla, 'from':sender}.
+        """
+        
         global list_connections
-        message = self.auth_users[self.connStrRepr(sender_connection)] + '> ' + data['message']
+        message = self.auth_users[self.conn_str_repr(sender_connection)] + '> ' + data['message']
         for connection in list_connections:
             if connection != sender_connection:
                 connection.sendall(b'OK!' + message.encode('utf8'))
         return 'OK!', 'Messages sent to all'
         
-    #Handling flags.
-    def proccessData(self, data, flag, connection):
+    def proccess_data(self, data, flag, connection):
+        """Handling flags.
+        """
+        
         data = json.loads(data)
         response = ''
         if flag == 1:
             response = self.auth(data, connection)
         if flag == 2:
-            response = self.msgAll(data, connection)
+            response = self.send_to_all(data, connection)
         return response
         
-    #Getting data. If can't then return error message.
-    #Return data if all went good
-    def getData(self, connection, size):
+    def get_data(self, connection, size):
+        """Getting data. If can't then return error message.
+           Return data if all went good
+        """
+        
         recv_data = b''
         while len(recv_data) < size:
             try:
@@ -95,9 +113,11 @@ class Server():
                 return None
             recv_data += packet
         return recv_data.decode('utf8')
+       
+    def valid_headers(self, headers):
+        """Check for correct types of header's fields
+        """
         
-    #Check for correct types of header's fields
-    def validHeaders(self, headers):
         if not headers['Length'] and not isinstance(headers['Length'], int):
             return False
         if not headers['Flag'] and not isinstance(headers['Flag'], int):
@@ -108,36 +128,42 @@ class Server():
             return False
         return True
         
-    #Decode, load to json and return
-    def getHeaders(self, package):
+    def get_headers(self, package):
+        """Decode, load to json and return.
+        """
+        
         headers = package
         headers = headers.decode('utf-8')
         headers = json.loads(b64decode(headers).decode('utf-8'))
         return headers
         
-    #Trying to check if connection is alive
-    #If not then return error message
-    #If cannot receive data then return error message
-    #Response is a tuple with ('BAD' or 'OK!', DEBUGmessage)
-    #If all went good then send 'OK!' otherwise send 'BAD' which doesn't matter now
-    #TODO make 'OK!' and 'BAD!' matter something
-    #Return DEBUGmessage
-    def doResponse(self, connection, len, flag):
+    def do_response(self, connection, len, flag):
+        """Trying to check if connection is alive
+           If not then return error message
+           If cannot receive data then return error message
+           Response is a tuple with ('BAD' or 'OK!', DEBUGmessage)
+           If all went good then send 'OK!' otherwise send 'BAD' which doesn't matter now
+           TODO make 'OK!' and 'BAD!' matter something
+           Return DEBUGmessage
+        """
         try:
             connection.sendall(b'')
         except(ConnectionResetError, ConnectionAbortedError):
             return 'Disconnected by client'
             
-        data = self.getData(connection, len)
+        data = self.get_data(connection, len)
         if data == 'Disconnected by client':
             return data
             
-        response = self.proccessData(data, flag, connection)
+        response = self.proccess_data(data, flag, connection)
         connection.sendall(response[0].encode('utf8'))
         return response[1]
     
-    def clientThread(self, connection):
-        act_addr = self.connStrRepr(connection)
+    def client_thread(self, connection):
+        """Client thread.
+        """
+        
+        connection_address = self.conn_str_repr(connection)
         while True:
             try:
                 #Grab a header.
@@ -149,14 +175,14 @@ class Server():
                 
             #I dont want null... 
             if len(package) > 1:
-                headers = self.getHeaders(package)
+                headers = self.get_headers(package)
 
             else:
                 msg = 'Bad data'  #No it's not, I have to change it.
                 break
 
-            if self.validHeaders(headers):
-                r = self.doResponse(
+            if self.valid_headers(headers):
+                r = self.do_response(
                     connection,
                     headers['Length'],
                     headers['Flag'])
@@ -164,13 +190,13 @@ class Server():
                 msg = r
                 
                 if msg == 'Messages sent to all':
-                    name = self.auth_users[act_addr]
+                    name = self.auth_users[connection_address]
                     print('Message from', name, 'to all')
                 if msg == 'Successful login':
-                    name = self.auth_users[act_addr]
+                    name = self.auth_users[connection_address]
                     print(
                         'Successful login from',
-                        act_addr,
+                        connection_address,
                         'as',
                         name)
                 if msg == 'User exists':
@@ -189,32 +215,32 @@ class Server():
         # Finally, let it print something useful.
         if msg == 'Successful login':
             # connection.getpeername[0] = ip addr
-            name = self.auth_users[act_addr]
+            name = self.auth_users[connection_address]
             if name:
-                if delUser(self.auth_users, act_addr):
+                if delUser(self.auth_users, connection_address):
                     list_connections.remove(connection)
                     #If logout.
                     msg = "Successful disconnected by server, user=" + name + \
-                        "(addr=" + act_addr + "), " + "code=1"  
+                        "(addr=" + connection_address + "), " + "code=1"  
                     print(msg) 
 
         if msg == 'User exists':
             #Disconnect if failed to login, because user exist.
             #TODO attemps
             msg = "Successful disconnected by server, addr=" + \
-                act_addr + ", code=0"  
+                connection_address + ", code=0"  
             print(msg)
 
         if msg == 'Disconnected by client':
             try:
-                name = self.auth_users[act_addr]
-                delUser(self.auth_users, act_addr)
+                name = self.auth_users[connection_address]
+                delUser(self.auth_users, connection_address)
                 list_connections.remove(connection)
-                print(msg, act_addr)
+                print(msg, connection_address)
             except KeyError:
-                print(msg, act_addr)
+                print(msg, connection_address)
         if msg == 'Bad data':
-            print('Bad data', act_addr)
+            print('Bad data', connection_address)
         #Fine.
         connection.close()
         
@@ -222,19 +248,20 @@ class Server():
     def authUserPrinter(self):
         lenTmp = 0
         global list_connections
-        print('Initializing authUserPrinter...')  # SOME DEBUG STUFF
+        print('Initializing authUserPrinter...')  
         while True:
             sleep(0.5)
             now = len(list_connections)
             if lenTmp != now:
                 lenTmp = now
-                print(list_connections)  # SOME DEBUG STUFF
+                print(list_connections)  
+                
     #Run Forest run!
     def run(self):
-        self.createSocket()
+        self.create_socket()
         start_new_thread(self.authUserPrinter, ())
         while True:
             connection, none = self.sock.accept()
             print('Connected! ', connection.getpeername())
-            start_new_thread(self.clientThread, (connection,))
+            start_new_thread(self.client_thread, (connection,))
 Server(('192.168.1.102', 8002)).run()
