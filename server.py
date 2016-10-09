@@ -131,7 +131,7 @@ class Server():
     def get_headers(self, package):
         """Decode, load to json and return.
         """
-        
+     
         headers = package
         headers = headers.decode('utf-8')
         headers = json.loads(b64decode(headers).decode('utf-8'))
@@ -146,6 +146,7 @@ class Server():
            TODO make 'OK!' and 'BAD!' matter something
            Return DEBUGmessage
         """
+        
         try:
             connection.sendall(b'')
         except(ConnectionResetError, ConnectionAbortedError):
@@ -244,8 +245,10 @@ class Server():
         #Fine.
         connection.close()
         
-    #Helper.
     def authUserPrinter(self):
+        """Prints new user every time new user log-in
+        """
+        
         lenTmp = 0
         global list_connections
         print('Initializing authUserPrinter...')  
@@ -256,8 +259,9 @@ class Server():
                 lenTmp = now
                 print(list_connections)  
                 
-    #Run Forest run!
     def run(self):
+        """Run, Forest, run!  
+        """
         self.create_socket()
         start_new_thread(self.authUserPrinter, ())
         while True:
