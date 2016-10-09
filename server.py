@@ -10,7 +10,6 @@ from base64 import b64decode
 from time import sleep
 from collections import defaultdict
 from _thread import start_new_thread
-from util import switch
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.bind(('192.168.1.102', 8000))
 sock.listen(50)
@@ -76,12 +75,10 @@ class Server():
     def proccessData(self, data, flag, connection):
         data = json.loads(data)
         response = ''
-        for case in switch(flag):
-            if case(1):
-                response = self.auth(data, connection)
-                break
-            if case(2):
-                response = self.msgAll(data, connection)
+        if flag == 1:
+            response = self.auth(data, connection)
+        if flag == 2:
+            response = self.msgAll(data, connection)
         return response
     # as name tells
 
