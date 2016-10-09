@@ -193,13 +193,16 @@ class Server():
             if name:
                 if delUser(self.auth_users, act_addr):
                     list_connections.remove(connection)
+                    #If logout.
                     msg = "Successful disconnected by server, user=" + name + \
-                        "(addr=" + act_addr + "), " + "code=1"  # when disconnected with name
-                    print(msg)  # SOME DEBUG STUFF
+                        "(addr=" + act_addr + "), " + "code=1"  
+                    print(msg) 
 
         if msg == 'User exists':
+            #Disconnect if failed to login, because user exist.
+            #TODO attemps
             msg = "Successful disconnected by server, addr=" + \
-                act_addr + ", code=0"  # while connected without name
+                act_addr + ", code=0"  
             print(msg)
 
         if msg == 'Disconnected by client':
