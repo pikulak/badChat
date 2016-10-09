@@ -1,7 +1,12 @@
 ﻿#!c:/python34/python.exe
+#
+#This module does server stuff.
+#Author: Kacper Pikulski @ pikulak1@gmail.com
+#
+#
 import socket
-from base64 import b64decode
 import json
+from base64 import b64decode
 from time import sleep
 from collections import defaultdict
 from _thread import start_new_thread
