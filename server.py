@@ -23,40 +23,40 @@ def delUser(dict, value): #value=ip address
     
 class Server():
     def __init__(self, srvAddr):
-        self.auth_users = {}
+        self.auth_users = {} #two way dict
         self.srvAddr = srvAddr #tuple
     
     def createSocket(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.bind(self.srvAddr)
         self.sock.listen(50)
-        
     def auth(self, data, connection):
         global list_connections
+        #checking if username already in using
         if data['name'] in self.auth_users:
-            print('Failed to login,existing user, ip=',connection.getpeername()[0],'user=',data['name']) # SOME LOG STUFF
+            print('Failed to login,existing user, ip=',connection.getpeername()[0],'user=',data['name']) # SOME DEBUG STUFF
             return 'BAD', 'User exists'
         else:
             self.auth_users[data['name']] = connection
             self.auth_users[self.connStrRepr(connection)] = data['name']
             list_connections.append(connection)
-            print("Loged in:",data['name'])  # SOME LOG STUFF
+            print("Loged in:",data['name'])  # SOME DEBUG STUFF
             return 'OK!', 'Successful login'
-    
+    # just for two-way dict object's key representation
     def connStrRepr(self, connection):
         return connection.getpeername()[0]+":"+str(connection.getpeername()[1])
-    
+    # sending message to all without the sender
     def msgAll(self, data, sender_connection):
         message = self.auth_users[self.connStrRepr(sender_connection)] +'> '+ data['message']
-        print(message)
+        print(message) # SOME DEBUG STUFF
         global list_connections
         for connection in list_connections:
             if connection != sender_connection:
-                print('sent to',connection)  # SOME LOG STUFF
+                print('sent to',connection)  # SOME DEBUG STUFF
                 connection.sendall(b'OK!'+ message.encode('utf8'))
         return 'OK!', 'Messages sent to all'
-                
-    def proccessData(self, data, flag,connection):
+    # handling flags            
+    def proccessData(self, data, flag, connection):
         data = json.loads(data)
         response = ''
         for case in switch(flag):
@@ -66,7 +66,7 @@ class Server():
             if case(2):
                 response = self.msgAll(data, connection)
         return response
-        
+    # as name tells    
     def getData(self, connection, size):
         recv_data = b''
         while len(recv_data)<size:
@@ -78,20 +78,20 @@ class Server():
                 return None
             recv_data += packet
         return recv_data.decode('utf8')
-        
+    # as name tells    
     def validHeaders(self, headers):
         if not headers['Length'] and type(headers['Length']) is not int:   return False
         if not headers['Flag'] and type(headers['Flag']) is not int:   return False
         if not headers['Date']:   return False
         if not headers['Data-type']and type(headers['Data-type']) is not str:   return False
         return True
-        
+    #just decode and load from json    
     def getHeaders(self, package):
         headers = package
         headers = headers.decode('utf-8')
         headers = json.loads(b64decode(headers).decode('utf-8'))
         return headers
-        
+    # as name tells    
     def doResponse(self, connection, len, flag):
         try:
             connection.sendall(b'')
@@ -106,21 +106,22 @@ class Server():
         response = self.proccessData(data, flag, connection)
         connection.sendall(response[0].encode('utf8'))
         return response[1]
-            
+    #....        
     def clientThread(self, connection):
         act_addr = self.connStrRepr(connection)
         while True:
             try:
-                package = connection.recv(100)
+                package = connection.recv(100) # grab a header
      
-            except (ConnectionResetError, ConnectionAbortedError):
+            except (ConnectionResetError, ConnectionAbortedError): # if diconnected from client
                 msg = 'Disconnected by client'
                 break
-            if len(package) > 1:
+                
+            if len(package) > 1: # i dont want null
                 headers = self.getHeaders(package)
       
             else:
-                msg = 'Bad data'
+                msg = 'Bad data' # no it's not, i have to change it
                 break
             
             if self.validHeaders(headers):
@@ -140,7 +141,7 @@ class Server():
                 print("Disconnected: ", connection.getpeername(),'code=', 0) # SOME DEBUG STUFF
                 connection.sendall(b'BAD') # SOME DEBUG STUFF
                 break # SOME DEBUG STUFF
-                
+        # after errors or something else        
         if msg == 'Successful login':
             name = self.auth_users[act_addr] # connection.getpeername[0] = ip addr
             if name:
@@ -163,8 +164,9 @@ class Server():
                 print(msg, act_addr) # SOME DEBUG STUFF
         if msg == 'Bad data':
             print('Bad data',act_addr) # SOME DEBUG STUFF
-        connection.close() 
-        
+            
+        connection.close() # he is fine 
+    # helper : )    
     def authUserPrinter(self):
         lenTmp = 0
         global list_connections
