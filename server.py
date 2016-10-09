@@ -54,10 +54,10 @@ class Server():
         if data['name'] in self.auth_users:
             #Failed login.
             print(
-                'Failed to login,existing user, ip=',
+                'Failed to login, existing user, ip=',
                 connection.getpeername()[0],
                 'user=',
-                data['name'])
+                data['name'], sep="")
             return 'BAD', 'User exists'
         else:
             #Successful login.
@@ -71,16 +71,15 @@ class Server():
         """Two-way dict object's key representation.
         """
         
-        return connection.getpeername()[0] + \
-            ":" + str(connection.getpeername()[1])
+        return '{}:{}'.format(*connection.getpeername())
             
     def send_to_all(self, data, sender_connection):
         """Sending message to all connected peers without the sender.
-           TODO send message as json {'message':blabla, 'from':sender}.
+           TODO send message as json {'message':blabla, 'from':sender} and format it on the client side
         """
         
         global list_connections
-        message = self.auth_users[self.conn_str_repr(sender_connection)] + '> ' + data['message']
+        message = "{}>{}".format(self.auth_users[self.conn_str_repr(sender_connection)], data['message'])
         for connection in list_connections:
             if connection != sender_connection:
                 connection.sendall(b'OK!' + message.encode('utf8'))
@@ -157,7 +156,10 @@ class Server():
             return data
             
         response = self.proccess_data(data, flag, connection)
-        connection.sendall(response[0].encode('utf8'))
+        try:
+            connection.sendall(response[0].encode('utf8'))
+        except(ConnectionResetError, ConnectionAbortedError):
+            return 'Disconnected by client'
         return response[1]
     
     def client_thread(self, connection):
@@ -221,15 +223,17 @@ class Server():
                 if delUser(self.auth_users, connection_address):
                     list_connections.remove(connection)
                     #If logout.
-                    msg = "Successful disconnected by server, user=" + name + \
-                        "(addr=" + connection_address + "), " + "code=1"  
+                    msg = "Successful disconnected by server, user={}, ip={}, code={}".format(
+                        name,
+                        connection_address,
+                        code)
                     print(msg) 
 
         if msg == 'User exists':
             #Disconnect if failed to login, because user exist.
             #TODO attemps
-            msg = "Successful disconnected by server, addr=" + \
-                connection_address + ", code=0"  
+            msg = "Successful disconnected by server, addr={}, code={}".format(
+                connection_address, 0)
             print(msg)
 
         if msg == 'Disconnected by client':
