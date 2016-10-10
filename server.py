@@ -6,11 +6,7 @@ Author: Kacper Pikulski @ pikulak1@gmail.com
 import socket
 import json
 from base64 import b64decode
-from time import sleep
 from _thread import start_new_thread
-# Shared between connection threads
-list_connections = []  #
-
 
 def delUser(dict, value):
     """Value = ipaddr. Deleting two keys from two-way dict.
@@ -49,7 +45,7 @@ class Server():
         """Auth function. Takes data and socket object.
         """
         
-        global list_connections
+        global CONNECTIONS
         #Checking if username already in using
         if data['name'] in self.auth_users:
             #Failed login.
@@ -63,7 +59,7 @@ class Server():
             #Successful login.
             self.auth_users[data['name']] = connection
             self.auth_users[self.conn_str_repr(connection)] = data['name']
-            list_connections.append(connection)
+            CONNECTIONS.append(connection)
             print("Loged in:", data['name'])  # SOME DEBUG STUFF
             return 'OK!', 'Successful login'
     
@@ -78,9 +74,9 @@ class Server():
            TODO send message as json {'message':blabla, 'from':sender} and format it on the client side
         """
         
-        global list_connections
+        global CONNECTIONS
         message = "{}>{}".format(self.auth_users[self.conn_str_repr(sender_connection)], data['message'])
-        for connection in list_connections:
+        for connection in CONNECTIONS:
             if connection != sender_connection:
                 connection.sendall(b'OK!' + message.encode('utf8'))
         return 'OK!', 'Messages sent to all'
@@ -221,7 +217,7 @@ class Server():
             name = self.auth_users[connection_address]
             if name:
                 if delUser(self.auth_users, connection_address):
-                    list_connections.remove(connection)
+                    CONNECTIONS.remove(connection)
                     #If logout.
                     msg = "Successful disconnected by server, user={}, ip={}, code={}".format(
                         name,
@@ -240,7 +236,7 @@ class Server():
             try:
                 name = self.auth_users[connection_address]
                 delUser(self.auth_users, connection_address)
-                list_connections.remove(connection)
+                CONNECTIONS.remove(connection)
                 print(msg, connection_address)
             except KeyError:
                 print(msg, connection_address)
@@ -254,14 +250,13 @@ class Server():
         """
         
         lenTmp = 0
-        global list_connections
+        global CONNECTIONS
         print('Initializing authUserPrinter...')  
         while True:
-            sleep(0.5)
-            now = len(list_connections)
+            now = len(CONNECTIONS)
             if lenTmp != now:
                 lenTmp = now
-                print(list_connections)  
+                print(CONNECTIONS)  
                 
     def run(self):
         """Run, Forest, run!  
@@ -272,4 +267,8 @@ class Server():
             connection, none = self.sock.accept()
             print('Connected! ', connection.getpeername())
             start_new_thread(self.client_thread, (connection,))
-Server(('192.168.1.102', 8002)).run()
+
+if __name__ == "__main__":
+    # Shared between connection threads
+    CONNECTIONS = []
+    Server(('192.168.1.102', 8002)).run()
